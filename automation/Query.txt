@@ -1,0 +1,165 @@
+select distinct created_at, lat, lon, item_id, date(reviewed_at) as dt_review, current_tags
+    , CASE WHEN contains(current_tags,'auto:triage:home-trip')=true THEN 'auto_triage_home_trip'
+            WHEN contains(current_tags,'auto:triage-destination-place')=true THEN 'auto_triage_destination_place'
+            else 'valid_trip' end as trip_duration,
+ 
+      CASE WHEN contains(current_tags,'possible_bad_arrival_RP_distance')=true THEN 'RP_distance>50m'
+          else null end as RP_distance_auto,
+ 
+  CASE WHEN contains(current_tags,'possible_bad_arrival_backdoor')=true THEN 'possible_bad_backdoor'
+ else null end as arrival_backdoor_auto,
+ 
+ case when destination_search_result_administrative_unit_type like '%neighborhood%' then 'neighborhood'
+when destination_search_result_administrative_unit_type like '%country%' then 'country'
+when destination_search_result_administrative_unit_type like '%region%' then 'region'
+when destination_search_result_administrative_unit_type like '%place%' then 'place'
+when destination_search_result_administrative_unit_type like '%street%' then 'street'
+when destination_search_result_administrative_unit_type like '%poi%' then 'poi'
+when destination_search_result_administrative_unit_type like '%address%' then 'address'
+when destination_search_result_administrative_unit_type like '%district%' then 'district'
+when destination_search_result_administrative_unit_type like '%postcode%' then 'postcode'
+when destination_search_result_administrative_unit_type like '%locality%' then 'locality'
+when destination_search_result_administrative_unit_type is null then null 
+else 'other' end destination_search_unit_type
+
+   , case when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing')) and (contains(current_tags,'address')) then     'RP_missing_address'
+    when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing')) and (contains(current_tags,'POI')) then     'RP_missing_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'address')) then   'RP_incorrect_location_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'POI')) then   'RP_incorrect_location_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'address')) then            'RP_not_exist_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'POI')) then            'RP_not_exist_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'address')) then    'RP_missing_meta_data_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'POI')) then    'RP_missing_meta_data_POI'
+   when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'address')) then    'RP_wrong_category_address'
+   when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'POI')) then    'RP_wrong_category_POI'
+  when current_status != 'open' and (contains(current_tags,'3:missing')) and (contains(current_tags,'address')) then     'missing_address'
+    when current_status != 'open' and (contains(current_tags,'3:missing')) and (contains(current_tags,'POI')) then     'missing_POI'
+  when current_status != 'open' and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'address')) then   'incorrect_location_address'
+  when current_status != 'open' and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'POI')) then   'incorrect_location_POI'
+  when current_status != 'open' and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'address')) then            'not_exist_address'
+  when current_status != 'open' and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'POI')) then            'not_exist_POI'
+  when current_status != 'open' and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'address')) then    'missing_meta_data_address'
+  when current_status != 'open' and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'POI')) then    'missing_meta_data_POI'
+   when current_status != 'open' and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'address')) then    'wrong_category_address'
+   when current_status != 'open' and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'POI')) then    'wrong_category_POI'
+  when current_status != 'open' and (contains(current_tags,'undefined')) then    'undefined'
+  when current_status != 'open' and (contains(current_tags,'1:oneway')) then                                                 'oneway'
+  when current_status != 'open' and (contains(current_tags,'1:turn-restriction')) then                                       'turn-restriction'
+  when current_status != 'open' and (contains(current_tags,'1:absent_closure')) then                                         'absent_closure'
+  when current_status != 'open' and (contains(current_tags,'1:road_missing') or contains(current_tags,'1:missing_road')) then 'road_missing'
+  when current_status != 'open' and (contains(current_tags,'1:road_geometry')) then                                          'road_geometry'
+  when current_status != 'open' and (contains(current_tags,'1:road_connectivity')) then                                      'road_connectivity'
+  when current_status != 'open' and (contains(current_tags,'1:road_classification')) then                                    'road_classification'
+  when current_status != 'open' and (contains(current_tags,'1:vehicle_restriction')) then                                    'vehicle_restriction'
+  when current_status != 'open' and (contains(current_tags,'1:access')) then                                                 'access'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and (contains(linked_issues,'Jira/RTFDB-769') or contains(linked_issues,'Jira/RTFDB-2193')) then 'Reroutes'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-3088') then 'Favorites'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-4765') then 'Street centroids'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-4763') then 'White-space'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-444') then 'Too Early/Too Late instructions'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-9523') then 'Not given existing address'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/RICO-9784') then 'Multiple reroutes'
+  when current_status != 'open' and cardinality(filter(array_distinct(current_tags), x -> x like '%2%')) > 0 and contains(linked_issues,'Jira/NA-1064') then 'Not nearest building'
+else 'other' end as reason
+      
+  , case when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing')) and (contains(current_tags,'address')) then     'RP_missing_address'
+    when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing')) and (contains(current_tags,'POI')) then     'RP_missing_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'address')) then   'RP_incorrect_location_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:incorrect_location')) and (contains(current_tags,'POI')) then   'RP_incorrect_location_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'address')) then            'RP_not_exist_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:not_exist')) and (contains(current_tags,'POI')) then            'RP_not_exist_POI'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'address')) then    'RP_missing_meta_data_address'
+  when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:missing_meta_data')) and (contains(current_tags,'POI')) then    'RP_missing_meta_data_POI'
+   when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'address')) then    'RP_wrong_category_address'
+   when current_status != 'open' and (contains(current_tags,'RP')) and (contains(current_tags,'3:wrong_category')) and (contains(current_tags,'POI')) then    'RP_wrong_category_POI'
+  else 'other' end as routable_point
+      
+      , case 
+    when current_status != 'open' and (contains(current_tags,'POI')) then 'POI'
+    when current_status != 'open' and (contains(current_tags,'address')) then 'address'
+    when current_status != 'open' and (contains(current_tags,'place')) then 'place'
+    when current_status != 'open' and (contains(current_tags,'postcode')) then 'postcode'
+    when current_status != 'open' and (contains(current_tags,'street')) then 'street'
+    when current_status != 'open' and (contains(current_tags,'address_third_party_source')) then 'address_third_party'
+    when current_status != 'open' and (contains(current_tags,'poi_third_party_source')) then 'POI_third_party'
+     else null end as feature_type, 
+     current_status, 
+     
+    case 
+            when current_status = 'open' then 'Not reviewed'
+            when (current_status != 'open' and (contains(current_tags,'Hard_to Evaluate'))) = true then 'Hard_to_Evaluate'
+            when (current_status != 'open' and (contains(current_tags,'A:Good'))) = true then 'A:Good'
+            when (current_status != 'open' and (contains(current_tags,'A:Hard_to_Evaluate'))) = true then 'A:Hard_to_Evaluate'
+            when (current_status != 'open' and (contains(current_tags,'A:Fair'))) = true then 'A:Fair'
+            when (current_status != 'open' and (contains(current_tags,'A:Catastrophic'))) = true then 'A:Catastrophic'
+             else 'Other'
+        end as ca_status
+        
+      , case 
+            when (current_status != 'open' and (contains(current_tags,'RP'))) = true then 'RP'
+            else null end as RP
+      , case when length(try_cast(reviewed_at as varchar)) > 0 then 'human'
+            else 'auto' end as auto_human
+     , case when contains(current_tags, 'auto:navigation_stopped')=true  then 'Navigation_stopped' 
+            when contains(current_tags, 'auto:vehicle_parked')=true then 'Vehicle_parked' end  as finish_tag
+     , case when contains(current_tags,'auto:triage:home-trip')=true then 'Didn''t drive'
+     	      when contains(current_tags, 'auto:driver-arrived')=true then 'Arrived' 
+     	      else 'Drove partially' end as trip_type, 
+	case when contains(current_tags, 'auto:triage-good')=true then 'Auto_triage_good' 
+		    else null end as auto_good_tag, 
+      great_circle_distance(real_end_lat, real_end_lon, f.destination_search_result_point_lat ,f.destination_search_result_point_lon) * 1000 as difference_meters
+      , tag_group
+      , row_number() over (partition by item_id order by tag_group desc) as rn
+      , f.destination_search_result_point_name
+      , f.destination_search_result_point_category
+      , f.destination_search_result_point_lat
+      , f.destination_search_result_point_lon
+      , m.dt_c
+      , linked_issues
+      ,  case when contains(linked_issues,'Jira/RTFDB-769') or contains(linked_issues,'Jira/RTFDB-2193') then 'Reroutes'
+      when contains(linked_issues,'Jira/RICO-3088') then 'Favorites'
+      when contains(linked_issues,'Jira/RICO-4765') then 'Street centroids'
+      when contains(linked_issues,'Jira/RICO-4763') then 'White-space'
+      when contains(linked_issues,'Jira/RICO-444') then 'Too Early/Too Late instructions'
+      when contains(linked_issues,'Jira/RICO-9523') then 'Not given existing address'
+      when contains(linked_issues,'Jira/RICO-9784') then 'Multiple reroutes'
+      when contains(linked_issues,'Jira/NA-1064') then 'Not nearest building'
+else null end as issue
+, element_at(related_nav_feedbacks, 1).type as related_nav_feedbacks
+, search_events_count
+round( st_distance (to_spherical_geography(st_point( real_end_lon, real_end_lat)), to_spherical_geography(st_point( destination_routing_point_lon, destination_routing_point_lat))), 2) as difference_from_reroute
+, destination_search_result_point_accuracy_type
+, original_estimated_duration
+, real_duration
+, gps_trace_duration
+, reroute_count
+, case when contains(current_tags,'auto:has-not-request-coordinate')=true THEN 'not_coordinate'
+else null end as request_coordinates
+, destination_search_result_point_rang
+, end_location_deviation_angle
+, routable_point_to_search_road_distance
+, distance_to_reach_destination_by_road
+
+from (select created_at, reviewed_at, reviewed_by, item_id
+           , row_number() over (partition by item_id order by updated_at desc) as rn
+           , current_status, current_tags
+           , case when cardinality(filter(array_distinct(current_tags), x -> x like '%3%')) > 0 then 'search_data'
+                  when (contains(current_tags,'2:severity_routing_engine_issue_fair') or contains(current_tags,'2:routing_engine_issue')) then 'routing_engine'
+                  when (contains(current_tags,'2:severity_search_engine_issue_fair') or contains(current_tags,'2:search_engine_issue')) then 'search_engine'
+                  when (contains(current_tags,'2:APP_issue') or contains(current_tags,'2:severity_APP_issue_fair')) then 'APP_issue'
+                  when cardinality(filter(array_distinct(current_tags), x -> x like '%1%')) > 0 then 'navigation_data' 
+                  when cardinality(filter(array_distinct(current_tags), x -> x like 'undefined_reason')) > 0 then 'group_undefined_reason'
+                  else 'other' 
+             end as tag_group
+            , array_distinct(github_issues) github_issues, lat, lon, dt_c, linked_issues
+      from (select *
+                 , row_number() over (partition by item_id order by updated_at desc) as rn0
+                 , date(created_at) as dt_c
+            from xxxx.xxxxs
+            where project_id = '1111111111111111111111'
+              and substring(cast(created_at as varchar), 1, 10) between '2025-01-01' and '2025-07-01')
+      where rn0 = 1) m
+left join yyyy.yyyys  f on m.item_id = f.trip_id
+where rn = 1
+  and length(try_cast(reviewed_at as varchar)) > 0
+order by 1, m.dt_c
